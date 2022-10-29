@@ -25,22 +25,38 @@ type LifeGenId int
 //
 //	root is LifeGen.generations[currentGeneration]
 type LifeCell struct {
-	x, y int32
-	ind  int32
-	mode int // Index in to the colour list. Used to hilight cells
-	next *LifeCell
+	x, y  int32
+	indxy int32
+	mode  int // Can be used to Index in to a colour list. Used to hilight cells
+	next  *LifeCell
+}
+
+func NewLifeCell(x, y int32, mode int) *LifeCell {
+	return &LifeCell{x: x, y: x, indxy: x*INDEX_MULT + y, mode: mode, next: nil}
 }
 
 func (lc *LifeCell) Clone() *LifeCell {
-	return &LifeCell{x: lc.x, y: lc.y, ind: lc.ind, mode: lc.mode, next: nil}
+	return &LifeCell{x: lc.x, y: lc.y, indxy: lc.indxy, mode: lc.mode, next: nil}
 }
 
 func (lc *LifeCell) Next() *LifeCell {
 	return lc.next
 }
 
-func (lc *LifeCell) ModeMask() int {
+func (lc *LifeCell) Index() int32 {
+	return lc.indxy
+}
+
+func (lc *LifeCell) GetModeMask() int {
 	return lc.mode
+}
+
+func (lc *LifeCell) SetModeMask(mm int) {
+	lc.mode = lc.mode | mm
+}
+
+func (lc *LifeCell) ClrModeMask(mm int) {
+	lc.mode = lc.mode ^ mm
 }
 
 func (lc *LifeCell) XY() (int32, int32) {
@@ -293,9 +309,9 @@ func (lg *LifeGen) countNear(x, y int32, deadCells *LifeDeadCells) int {
 // If the index has been found then start at the index if the cell is above or equal to it.
 // Return 0 if not found, 1 if found.
 func (lg *LifeGen) getCellSlow(x, y int32, deadCellList *LifeDeadCells) int {
-	f := &LifeCell{x: x, y: y, ind: x*INDEX_MULT + y, mode: 0}
+	f := &LifeCell{x: x, y: y, indxy: x*INDEX_MULT + y, mode: 0}
 	var c *LifeCell
-	if lg.cellIndex[lg.currentGenId] != nil && f.ind >= lg.cellIndex[lg.currentGenId].ind {
+	if lg.cellIndex[lg.currentGenId] != nil && f.indxy >= lg.cellIndex[lg.currentGenId].indxy {
 		// Index found and cell ind is >= to the indexed cell ind. Start from indexed cell
 		c = lg.cellIndex[lg.currentGenId]
 	} else {
@@ -303,11 +319,11 @@ func (lg *LifeGen) getCellSlow(x, y int32, deadCellList *LifeDeadCells) int {
 		c = lg.generations[lg.currentGenId]
 	}
 	for c != nil {
-		if c.ind == f.ind {
+		if c.indxy == f.indxy {
 			// Cell found
 			return 1
 		}
-		if c.ind > f.ind {
+		if c.indxy > f.indxy {
 			// We passed where the cell should be. Dont waste time searching further
 			// The cell is not found (assumed dead!) so add it to the dead cell list
 			deadCellList.addDeadCell(x, y)
@@ -325,9 +341,9 @@ func (lg *LifeGen) getCellSlow(x, y int32, deadCellList *LifeDeadCells) int {
 // If the index has been found then start at the index if the cell is above or equal to it.
 // Return 0 if not found, 1 if found.
 func (lg *LifeGen) GetCell(x, y int32) int {
-	f := &LifeCell{x: x, y: y, ind: x*INDEX_MULT + y, mode: 0}
+	f := &LifeCell{x: x, y: y, indxy: x*INDEX_MULT + y, mode: 0}
 	var c *LifeCell
-	if lg.cellIndex[lg.currentGenId] != nil && f.ind >= lg.cellIndex[lg.currentGenId].ind {
+	if lg.cellIndex[lg.currentGenId] != nil && f.indxy >= lg.cellIndex[lg.currentGenId].indxy {
 		// Index found and cell ind is >= to the indexed cell ind. Start from indexed cell
 		c = lg.cellIndex[lg.currentGenId]
 	} else {
@@ -335,11 +351,11 @@ func (lg *LifeGen) GetCell(x, y int32) int {
 		c = lg.generations[lg.currentGenId]
 	}
 	for c != nil {
-		if c.ind == f.ind {
+		if c.indxy == f.indxy {
 			// Cell found
 			return 1
 		}
-		if c.ind > f.ind {
+		if c.indxy > f.indxy {
 			// We passed where the cell should be. Dont waste time searching further
 			return 0
 		}
@@ -381,7 +397,7 @@ func (lg *LifeGen) GetBounds() (int32, int32, int32, int32) {
 func (ldc *LifeDeadCells) addDeadCell(x, y int32) {
 	t := ldc.root
 	if t == nil {
-		ldc.root = &LifeCell{x: x, y: y, next: nil, ind: x*INDEX_MULT + y, mode: 0}
+		ldc.root = &LifeCell{x: x, y: y, next: nil, indxy: x*INDEX_MULT + y, mode: 0}
 		ldc.count = 1
 		return
 	}
@@ -393,7 +409,7 @@ func (ldc *LifeDeadCells) addDeadCell(x, y int32) {
 		l = t
 		t = t.next
 	}
-	l.next = &LifeCell{x: x, y: y, next: t, ind: x*INDEX_MULT + y, mode: 0}
+	l.next = &LifeCell{x: x, y: y, next: t, indxy: x*INDEX_MULT + y, mode: 0}
 	ldc.count++
 }
 
@@ -509,8 +525,8 @@ func (lg *LifeGen) RemoveCell(x, y int32) {
 //			The last cess has the highes ind value
 func (lg *LifeGen) addCellToGen(x, y int32, mode int, genId LifeGenId) int {
 	lg.cellIndex[genId] = nil
-	toAdd := &LifeCell{x: x, y: y, next: nil, ind: x*INDEX_MULT + y, mode: mode}
-	toAddid := toAdd.ind
+	toAdd := &LifeCell{x: x, y: y, next: nil, indxy: x*INDEX_MULT + y, mode: mode}
+	toAddid := toAdd.indxy
 	if lg.generations[genId] == nil { // Generation has NO cells so cell becomes the root cell
 		lg.generations[genId] = toAdd
 		return 1
@@ -518,11 +534,11 @@ func (lg *LifeGen) addCellToGen(x, y int32, mode int, genId LifeGenId) int {
 	var current *LifeCell
 
 	current = lg.generations[genId]
-	if current.ind == toAddid {
+	if current.indxy == toAddid {
 		return 0 // First cell has the same id as teh cell to add so dont add it
 	}
 
-	if current.ind > toAddid {
+	if current.indxy > toAddid {
 		lg.generations[genId] = toAdd // New cell has ind less that the root so add it in front as the new root cell
 		toAdd.next = current
 		return 1
@@ -532,10 +548,10 @@ func (lg *LifeGen) addCellToGen(x, y int32, mode int, genId LifeGenId) int {
 	// Prev keeps track of the previous cell to make insertion easy.
 	var prev *LifeCell
 	for current != nil {
-		if current.ind == toAddid {
+		if current.indxy == toAddid {
 			return 0 // Already exists so dont add it
 		}
-		if current.ind > toAddid {
+		if current.indxy > toAddid {
 			t := prev.next // Found the first cell with ind > new cell ind. So insert in front of it
 			prev.next = toAdd
 			toAdd.next = t
@@ -567,16 +583,16 @@ func (lg *LifeGen) index() *LifeCell {
 	if g == nil || g.next == nil {
 		return nil // None or 1 cell. Do not index!
 	}
-	low := g.ind
+	low := g.indxy
 	hi := low
 	for g != nil {
-		hi = g.ind
+		hi = g.indxy
 		g = g.next
 	}
 	mid := low + ((hi - low) / 2)
 	g = lg.generations[lg.currentGenId]
 	for g != nil {
-		if g.ind >= mid {
+		if g.indxy >= mid {
 			return g
 		}
 		g = g.next
@@ -588,7 +604,7 @@ func (lg *LifeGen) index() *LifeCell {
 //
 //	Return the cells ind as a 16 digit string
 func (lc *LifeCell) String() string {
-	return fmt.Sprintf("%016d", lc.ind)
+	return fmt.Sprintf("%016d", lc.indxy)
 }
 
 // Debugging string utils

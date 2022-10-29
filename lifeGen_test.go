@@ -7,6 +7,33 @@ import (
 	"time"
 )
 
+func TestLifeCellMode(t *testing.T) {
+	lc := NewLifeCell(0, 0, 0)
+	if lc.GetModeMask() != 0 {
+		t.Errorf("error: LifeCell mode must be 0")
+	}
+	lc.SetModeMask(0b00010001)
+	if lc.GetModeMask() != 0b00010001 {
+		t.Errorf("error: LifeCell mode must be 00010001 actual %08b", lc.GetModeMask())
+	}
+	lc.SetModeMask(0b00010100)
+	if lc.GetModeMask() != 0b00010101 {
+		t.Errorf("error: LifeCell mode must be 00010101 actual %08b", lc.GetModeMask())
+	}
+	lc.ClrModeMask(0b00010100)
+	if lc.GetModeMask() != 0b00000001 {
+		t.Errorf("error: LifeCell mode must be 00000001 actual %08b", lc.GetModeMask())
+	}
+	lc.SetModeMask(0b10000000)
+	if lc.GetModeMask() != 0b10000001 {
+		t.Errorf("error: LifeCell mode must be 10000001 actual %08b", lc.GetModeMask())
+	}
+	lc.ClrModeMask(0b10000001)
+	if lc.GetModeMask() != 0b00000000 {
+		t.Errorf("error: LifeCell mode must be 00000000 actual %08b", lc.GetModeMask())
+	}
+
+}
 func TestLifeRunFor(t *testing.T) {
 	rle, err := NewRleFile("testdata/ibeacon.rle")
 	if err != nil {

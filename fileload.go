@@ -132,6 +132,10 @@ func (rle *RLE) Filename() string {
 	return rle.fileName
 }
 
+func (rle *RLE) Comment() string {
+	return rle.comment
+}
+
 func (rle *RLE) Coords() []int32 {
 	return rle.coords
 }
