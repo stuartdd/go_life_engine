@@ -1,6 +1,6 @@
 #[cfg(test)]
-mod tests {
-    use super::super::*;
+mod lists_tests {
+    use crate::lists::lists::*;
     #[test]
     fn test_list_get_call() {
         let mut llist = LinkedLists::new();

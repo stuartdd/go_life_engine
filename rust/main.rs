@@ -1,3 +1,5 @@
+mod life;
+mod life_tests;
 mod lists;
 mod lists_tests;
 use crate::lists::lists::*;
